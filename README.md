@@ -1,4 +1,4 @@
-# 🔒 QR-Shield: Anti-Quishing Fraud Defense Engine
+# 🔒 QR-Shield: Anti-Quishing Fraud Defense Engine for Nepal Bank and Wallet 
 
 QR-Shield is a standalone, mobile-responsive computer vision application built using Python, Streamlit, and OpenCV. It operates as a defensive mechanism to combat the growing epidemic of **Quishing** (QR Code Phishing) financial fraud across digital payment networks.
 
