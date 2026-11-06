@@ -7,15 +7,8 @@ from urllib.parse import urlparse
 from pyzbar.pyzbar import decode
 from pydantic import BaseModel, Field
 
-# 1. Page Configuration & Custom Cyber UI Theme
-st.set_page_config(
-    page_title="SajagQR Shield | Threat Forensics",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-st.markdown("""
+# 1. UI Theme Stylesheet
+UI_CUSTOM_CSS = """
 <style>
     /* Status Verdict Banners */
     .status-banner {
@@ -76,7 +69,7 @@ st.markdown("""
         padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 0.76rem;
     }
 </style>
-""", unsafe_allow_html=True)
+"""
 
 # 2. Nepal Rastra Bank Approved FinTech & Gateway Ecosystem Registry
 LICENSED_FINTECH_REGISTRY = {
@@ -503,145 +496,154 @@ def evaluate_threat(payload: str) -> AssessmentResult:
         is_personal_p2p=is_personal_p2p
     )
 
-# --- USER INTERFACE ---
-col_logo, col_desc = st.columns([0.08, 0.92])
-with col_logo:
-    st.markdown("<h1 style='margin:0; padding:0;'>🛡️</h1>", unsafe_allow_html=True)
-with col_desc:
-    st.markdown("### **SajagQR Shield — Anti-Quishing & Payment Telemetry Engine**")
-    st.caption("Forensic payload inspection, brand typosquatting defense, and recipient zero-trust validation for Nepal's digital payment ecosystem.")
+def main():
+    st.set_page_config(
+        page_title="SajagQR Shield | Threat Forensics",
+        page_icon="🛡️",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+    st.markdown(UI_CUSTOM_CSS, unsafe_allow_html=True)
 
-st.divider()
+    # --- USER INTERFACE ---
+    col_logo, col_desc = st.columns([0.08, 0.92])
+    with col_logo:
+        st.markdown("<h1 style='margin:0; padding:0;'>🛡️</h1>", unsafe_allow_html=True)
+    with col_desc:
+        st.markdown("### **SajagQR Shield — Anti-Quishing & Payment Telemetry Engine**")
+        st.caption("Forensic payload inspection, brand typosquatting defense, and recipient zero-trust validation for Nepal's digital payment ecosystem.")
 
-col_input, col_audit = st.columns([1, 1.25], gap="large")
+    st.divider()
 
-input_provided = False
-raw_payload_to_test = None
+    col_input, col_audit = st.columns([1, 1.25], gap="large")
 
-with col_input:
-    st.markdown("#### 📥 Code Ingestion")
-    tab_cam, tab_file, tab_url = st.tabs(["📸 Camera Snap", "📁 Upload Image", "🔗 Raw Link / URL"])
-    
-    with tab_cam:
-        cam_snap = st.camera_input("Position QR code in center of frame", label_visibility="collapsed")
-        if cam_snap:
-            input_provided = True
-            with st.spinner("Decoding matrix..."):
-                raw_payload_to_test = safe_decode_qr(cam_snap.getvalue())
-            st.image(cam_snap, caption="Live Frame Capture", width=220)
-            
-    with tab_file:
-        up_file = st.file_uploader("Upload screenshot or image (PNG, JPG)", type=["png", "jpg", "jpeg"], label_visibility="collapsed")
-        if up_file:
-            input_provided = True
-            with st.spinner("Decoding matrix..."):
-                raw_payload_to_test = safe_decode_qr(up_file.getvalue())
-            st.image(up_file, caption="Uploaded Artifact", width=220)
+    input_provided = False
+    raw_payload_to_test = None
 
-    with tab_url:
-        st.caption("Audit direct URLs, payment links, or mobile deep links without an image:")
-        manual_url = st.text_input("Enter or paste link payload", placeholder="https://esewa-verification.com/login or fonepay://...")
-        if manual_url and manual_url.strip():
-            input_provided = True
-            raw_payload_to_test = manual_url.strip()
-
-with col_audit:
-    st.markdown("#### 🔍 Real-Time Forensics & Telemetry")
-    
-    if input_provided and not raw_payload_to_test:
-        st.error("❌ No QR Code structure detected. Clean the lens, adjust lighting, or try a clearer image frame.")
-    elif raw_payload_to_test:
-        result = evaluate_threat(raw_payload_to_test)
-
-        # 1. Aligned Status Banner
-        banner_class = "banner-safe" if result.verdict in ["SAFE", "LOW_RISK"] else ("banner-warn" if result.verdict == "SUSPICIOUS_UNVERIFIED" else "banner-critical")
-        status_symbol = "✅" if "SAFE" in result.verdict or "LOW" in result.verdict else ("⚠️" if "SUSPICIOUS" in result.verdict else "🚨")
+    with col_input:
+        st.markdown("#### 📥 Code Ingestion")
+        tab_cam, tab_file, tab_url = st.tabs(["📸 Camera Snap", "📁 Upload Image", "🔗 Raw Link / URL"])
         
-        st.markdown(f"""
-        <div class="status-banner {banner_class}">
-            <div>
-                <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;">Assessment Verdict</span>
-                <h3 style="margin: 0; padding: 0;">{status_symbol} {result.verdict.replace('_', ' ')}</h3>
-            </div>
-            <div style="text-align: right;">
-                <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;">Threat Score</span>
-                <h2 style="margin: 0; padding: 0;">{result.risk_score} <span style="font-size: 1rem; opacity: 0.6;">/ 100</span></h2>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        with tab_cam:
+            cam_snap = st.camera_input("Position QR code in center of frame", label_visibility="collapsed")
+            if cam_snap:
+                input_provided = True
+                with st.spinner("Decoding matrix..."):
+                    raw_payload_to_test = safe_decode_qr(cam_snap.getvalue())
+                st.image(cam_snap, caption="Live Frame Capture", width=220)
+                
+        with tab_file:
+            up_file = st.file_uploader("Upload screenshot or image (PNG, JPG)", type=["png", "jpg", "jpeg"], label_visibility="collapsed")
+            if up_file:
+                input_provided = True
+                with st.spinner("Decoding matrix..."):
+                    raw_payload_to_test = safe_decode_qr(up_file.getvalue())
+                st.image(up_file, caption="Uploaded Artifact", width=220)
 
-        # 2. Standee Physical Swap Warning (Contextual Security Advisory)
-        if result.is_personal_p2p:
-            st.markdown("""
-            <div class="standee-warning">
-                <b>⚠️ Physical Standee Swap Advisory:</b><br>
-                This payload points to an <b>individual personal wallet</b>, NOT an institutional NepalQR merchant stand.
-                If you are scanning a standee at a grocery or retail counter, inspect the plate to ensure a scammer has not pasted an overlay sticker on top of the merchant's real QR.
-            </div>
-            """, unsafe_allow_html=True)
+        with tab_url:
+            st.caption("Audit direct URLs, payment links, or mobile deep links without an image:")
+            manual_url = st.text_input("Enter or paste link payload", placeholder="https://esewa-verification.com/login or fonepay://...")
+            if manual_url and manual_url.strip():
+                input_provided = True
+                raw_payload_to_test = manual_url.strip()
 
-        # 3. Beneficiary Identity Card (Zero-Trust)
-        if result.beneficiary:
-            st.markdown("##### 👤 Beneficiary Verification")
-            with st.container(border=True):
-                b_cols = st.columns(len(result.beneficiary))
-                for idx, (k, v) in enumerate(result.beneficiary.items()):
-                    with b_cols[idx]:
-                        st.caption(k)
-                        st.markdown(f"**{v}**")
+    with col_audit:
+        st.markdown("#### 🔍 Real-Time Forensics & Telemetry")
+        
+        if input_provided and not raw_payload_to_test:
+            st.error("❌ No QR Code structure detected. Clean the lens, adjust lighting, or try a clearer image frame.")
+        elif raw_payload_to_test:
+            result = evaluate_threat(raw_payload_to_test)
 
-        # 4. Live Verification Checklist
-        st.markdown("##### 📋 Forensic Verification Checklist")
-        st.markdown('<div class="telemetry-card">', unsafe_allow_html=True)
-        for check_name, (passed, detail) in result.checklist.items():
-            icon = "🟢" if passed else "🔴"
+            # 1. Aligned Status Banner
+            banner_class = "banner-safe" if result.verdict in ["SAFE", "LOW_RISK"] else ("banner-warn" if result.verdict == "SUSPICIOUS_UNVERIFIED" else "banner-critical")
+            status_symbol = "✅" if "SAFE" in result.verdict or "LOW" in result.verdict else ("⚠️" if "SUSPICIOUS" in result.verdict else "🚨")
+            
             st.markdown(f"""
-            <div class="checklist-row">
-                <span>{icon} <b>{check_name}</b></span>
-                <span style="opacity: 0.85;">{detail}</span>
+            <div class="status-banner {banner_class}">
+                <div>
+                    <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;">Assessment Verdict</span>
+                    <h3 style="margin: 0; padding: 0;">{status_symbol} {result.verdict.replace('_', ' ')}</h3>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;">Threat Score</span>
+                    <h2 style="margin: 0; padding: 0;">{result.risk_score} <span style="font-size: 1rem; opacity: 0.6;">/ 100</span></h2>
+                </div>
             </div>
             """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
 
-        # 5. Triggered Flags
-        st.markdown("##### 🚩 Triggered Security Indicators")
-        if result.flags:
-            tags = []
-            for f in result.flags:
-                if "CRITICAL" in result.verdict or "TYPOSQUATTING" in f:
-                    tags.append(f"<span class='threat-tag-critical'>{f}</span>")
-                elif "ANOMALOUS" in f or "UNENCRYPTED" in f:
-                    tags.append(f"<span class='threat-tag-warn'>{f}</span>")
-                else:
-                    tags.append(f"<span class='threat-tag-info'>{f}</span>")
-            st.markdown(" ".join(tags), unsafe_allow_html=True)
-        else:
-            st.write("No anomalous risk indicators triggered.")
-
-        # 6. Incident Reporting Drawer (Nepal Police Cyber Bureau)
-        if result.verdict == "CRITICAL_FRAUD_RISK":
-            with st.expander("🚨 Take Action: Report to Nepal Police Cyber Bureau"):
+            # 2. Standee Physical Swap Warning (Contextual Security Advisory)
+            if result.is_personal_p2p:
                 st.markdown("""
-                **Suspected Quishing / Financial Phishing Artifact Flagged.**
-                - **Cyber Bureau Hotline:** `01-5319044` / `100`
-                - **Official Email:** `cyberbureau@nepalpolice.gov.np`
-                - **Advisory:** Do **not** input your MPIN, OTP, or wallet password on the target destination.
-                """)
-                st.download_button(
-                    label="📥 Export Forensic Incident Report (JSON)",
-                    data=json.dumps(result.model_dump(), indent=2),
-                    file_name="sajag_qr_incident_artifact.json",
-                    mime="application/json"
-                )
+                <div class="standee-warning">
+                    <b>⚠️ Physical Standee Swap Advisory:</b><br>
+                    This payload points to an <b>individual personal wallet</b>, NOT an institutional NepalQR merchant stand.
+                    If you are scanning a standee at a grocery or retail counter, inspect the plate to ensure a scammer has not pasted an overlay sticker on top of the merchant's real QR.
+                </div>
+                """, unsafe_allow_html=True)
 
-        # 7. Raw Payload Inspector
-        st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("🛠️ Raw Hex / Matrix Payload Inspection"):
-            st.code(raw_payload_to_test, language="text")
+            # 3. Beneficiary Identity Card (Zero-Trust)
+            if result.beneficiary:
+                st.markdown("##### 👤 Beneficiary Verification")
+                with st.container(border=True):
+                    b_cols = st.columns(len(result.beneficiary))
+                    for idx, (k, v) in enumerate(result.beneficiary.items()):
+                        with b_cols[idx]:
+                            st.caption(k)
+                            st.markdown(f"**{v}**")
 
-    else:
-        # High-Density Idle State Panel
-        idle_panel_html = """<div class="telemetry-card">
+            # 4. Live Verification Checklist
+            st.markdown("##### 📋 Forensic Verification Checklist")
+            st.markdown('<div class="telemetry-card">', unsafe_allow_html=True)
+            for check_name, (passed, detail) in result.checklist.items():
+                icon = "🟢" if passed else "🔴"
+                st.markdown(f"""
+                <div class="checklist-row">
+                    <span>{icon} <b>{check_name}</b></span>
+                    <span style="opacity: 0.85;">{detail}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # 5. Triggered Flags
+            st.markdown("##### 🚩 Triggered Security Indicators")
+            if result.flags:
+                tags = []
+                for f in result.flags:
+                    if "CRITICAL" in result.verdict or "TYPOSQUATTING" in f:
+                        tags.append(f"<span class='threat-tag-critical'>{f}</span>")
+                    elif "ANOMALOUS" in f or "UNENCRYPTED" in f:
+                        tags.append(f"<span class='threat-tag-warn'>{f}</span>")
+                    else:
+                        tags.append(f"<span class='threat-tag-info'>{f}</span>")
+                st.markdown(" ".join(tags), unsafe_allow_html=True)
+            else:
+                st.write("No anomalous risk indicators triggered.")
+
+            # 6. Incident Reporting Drawer (Nepal Police Cyber Bureau)
+            if result.verdict == "CRITICAL_FRAUD_RISK":
+                with st.expander("🚨 Take Action: Report to Nepal Police Cyber Bureau"):
+                    st.markdown("""
+                    **Suspected Quishing / Financial Phishing Artifact Flagged.**
+                    - **Cyber Bureau Hotline:** `01-5319044` / `100`
+                    - **Official Email:** `cyberbureau@nepalpolice.gov.np`
+                    - **Advisory:** Do **not** input your MPIN, OTP, or wallet password on the target destination.
+                    """)
+                    st.download_button(
+                        label="📥 Export Forensic Incident Report (JSON)",
+                        data=json.dumps(result.model_dump(), indent=2),
+                        file_name="sajag_qr_incident_artifact.json",
+                        mime="application/json"
+                    )
+
+            # 7. Raw Payload Inspector
+            st.markdown("<br>", unsafe_allow_html=True)
+            with st.expander("🛠️ Raw Hex / Matrix Payload Inspection"):
+                st.code(raw_payload_to_test, language="text")
+
+        else:
+            # High-Density Idle State Panel
+            idle_panel_html = """<div class="telemetry-card">
 <h4>⚡ Engine Ready &amp; Threat Intelligence Active</h4>
 <p style="opacity: 0.8; font-size: 0.88rem;">
 Awaiting input from the left panel. SajagQR continuously audits payloads against licensed Nepal Rastra Bank directives and active quishing signatures.
@@ -686,4 +688,7 @@ Awaiting input from the left panel. SajagQR continuously audits payloads against
 </div>
 </div>
 </div>"""
-        st.markdown(idle_panel_html, unsafe_allow_html=True)
+            st.markdown(idle_panel_html, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
