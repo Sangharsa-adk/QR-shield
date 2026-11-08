@@ -108,7 +108,7 @@ For HTTP/HTTPS payloads, the engine applies layered static filtering:
    - **Commercial Bank Registry**: Matches all 20 NRB-licensed "Class A" commercial banks (Nabil, NIC Asia, Global IME, Everest, Himalayan, etc.).
 5. **Mobile Attribution Platform Auditing**:
    - Matches MMP routers (`onelink.me`, `page.link`, `app.link`, `adjust.com`, `smart.link`, etc.).
-   - Extracts subdomains and correlates them with licensed bank or wallet campaign slugs (e.g., `laxmi-remittance.onelink.me`).
+   - Extracts subdomains and correlates them with licensed bank or wallet campaign slugs (e.g., `url.onelink.me`).
 6. **Brand Typosquatting & Impersonation Defense**:
    - Scans domain segments for bank and fintech brand names.
    - Any unverified external host containing a brand slug (e.g., `esewa-verification.net`, `nabil-login.com`) receives a `+75` risk penalty and is flagged with `TYPOSQUATTING_TARGETING_<BRAND>`.
