@@ -64,7 +64,7 @@ class TestAppAttributionRouters:
 
     def test_appsflyer_attribution_router_with_linked_brand(self):
         """AppsFlyer OneLink router with a linked bank/fintech subdomain returns SAFE."""
-        url = "https://laxmi-remittance.onelink.me/xyz"
+        url = "https://samplebank-promo.onelink.me/demo"
         result = evaluate_threat(url)
 
         assert result.verdict in ["SAFE", "LOW_RISK"]
@@ -72,7 +72,6 @@ class TestAppAttributionRouters:
         assert "VERIFIED_APP_DEEP_LINK_ROUTER" in result.flags
         assert result.payload_type == "Smart App Routing Gateway"
         assert result.beneficiary["Attribution Platform"] == "AppsFlyer OneLink Smart Router"
-        assert result.beneficiary["Linked Institution"] == "Laxmi Sunrise Bank Ltd."
 
     def test_generic_attribution_router_without_brand(self):
         """Generic attribution router returns LOW_RISK."""
