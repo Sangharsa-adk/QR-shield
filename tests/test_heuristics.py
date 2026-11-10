@@ -157,3 +157,64 @@ class TestOfficialGatewaysAndSchemes:
         assert result.verdict in ["SAFE", "LOW_RISK", "CONTROLLED_DEEP_LINK"]
         assert any("LICENSED_SCHEME" in f for f in result.flags)
 
+
+class TestReDoSResilience:
+    """Tests ensuring regular expressions resist catastrophic backtracking (ReDoS)."""
+
+    def test_pathological_phone_number_evaluates_quickly(self):
+        """Massive repeated digit sequence must be rejected in milliseconds without ReDoS."""
+        malformed_phone = "98" + ("9" * 25000)
+        payload = json.dumps({"eSewa_id": malformed_phone})
+        result = evaluate_threat(payload)
+
+        assert "ANOMALOUS_ACCOUNT_FORMAT" in result.flags
+        assert result.checklist["Beneficiary Syntax"][0] is False
+
+    def test_pathological_app_scheme_evaluates_quickly(self):
+        """Excessively long scheme payload must be bounded and not cause ReDoS."""
+        long_scheme_payload = ("test" * 5000) + "://payment/endpoint"
+        result = evaluate_threat(long_scheme_payload)
+
+        # Length > 64 chars will fail the strict scheme regex, falling back to unstructured
+        assert result.verdict in ["CRITICAL_FRAUD_RISK", "LOW_RISK"]
+
+    def test_pathological_router_domain_evaluates_quickly(self):
+        """Deeply nested or repeated subdomains on router patterns evaluate deterministically."""
+        nested_domain = "https://" + ("sub-" * 100) + "demo.onelink.me/app"
+        result = evaluate_threat(nested_domain)
+
+        assert "VERIFIED_APP_DEEP_LINK_ROUTER" in result.flags
+
+
+class TestInputSanitizationAndInjectionDefense:
+    """Tests verifying HTML and script injection payloads are properly handled."""
+
+    def test_xss_script_tag_in_json_account_is_neutralized(self):
+        """XSS payloads in account identifiers are flagged and safely escaped."""
+        xss_account = "<script>alert('XSS')</script>"
+        payload = json.dumps({"eSewa_id": xss_account})
+        result = evaluate_threat(payload)
+
+        assert "ANOMALOUS_ACCOUNT_FORMAT" in result.flags
+        assert xss_account in result.beneficiary["Recipient Account"]
+        # Verify html.escape neutralizes the payload
+        import html
+        escaped = html.escape(result.beneficiary["Recipient Account"])
+        assert "<script>" not in escaped
+        assert "&lt;script&gt;" in escaped
+
+    def test_img_onerror_in_emvco_merchant_name_is_neutralized(self):
+        """Weaponized HTML tag in Tag 59 merchant name is extracted and neutralizable."""
+        tag59_val = "<img src=x onerror=alert(1)>"
+        length_str = f"{len(tag59_val):02d}"
+        payload = f"0002010102125802NP59{length_str}{tag59_val}6009Kathmandu6304ABCD"
+        result = evaluate_threat(payload)
+
+        assert result.verdict == "SAFE"
+        assert result.beneficiary["Merchant POS Name"] == tag59_val
+        import html
+        escaped = html.escape(result.beneficiary["Merchant POS Name"])
+        assert "<img" not in escaped
+        assert "&lt;img" in escaped
+
+

@@ -1,11 +1,27 @@
-import streamlit as st
-import cv2
-import numpy as np
+import html
 import json
 import re
 from urllib.parse import urlparse
-from pyzbar.pyzbar import decode
+import cv2
+import numpy as np
 from pydantic import BaseModel, Field
+from pyzbar.pyzbar import decode
+import streamlit as st
+
+# ---------------------------------------------------------
+# ReDoS Defense & Precompiled Deterministic Regular Expressions
+# ---------------------------------------------------------
+# Strict URI scheme pattern with explicit length bound and anchors:
+RE_APP_SCHEME = re.compile(r"^([a-zA-Z0-9_-]{1,64})://")
+
+# Standard web schemes (HTTP/HTTPS):
+RE_WEB_SCHEME = re.compile(r"^https?$", re.IGNORECASE)
+
+# Validated 10-digit Nepal mobile identifier (NTC/Ncell: 98XXXXXXXX or 97XXXXXXXX):
+RE_TELECOM_PHONE = re.compile(r"^(?:98|97)\d{8}$")
+
+# Strict hostname validation pattern avoiding catastrophic nested quantifiers:
+RE_VALID_DOMAIN = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$")
 
 # 1. UI Theme Stylesheet
 UI_CUSTOM_CSS = """
@@ -179,6 +195,13 @@ APP_ATTRIBUTION_ROUTERS = {
     "linkrunner.io": "Linkrunner AI Deep Linker",
 }
 
+# Precompiled deterministic router matching regex (anchored, no unbounded nested quantifiers)
+RE_ATTRIBUTION_ROUTER = re.compile(
+    r"^(?:(?P<subdomain>[a-z0-9-]+(?:\.[a-z0-9-]+)*)\.)?(?P<router>"
+    + "|".join(re.escape(r) for r in APP_ATTRIBUTION_ROUTERS)
+    + r")$"
+)
+
 SUSPICIOUS_SHORTENERS = {
     "bit.ly", "tinyurl.com", "rb.gy", "cutt.ly", "t.co", "is.gd", "v.gd"
 }
@@ -223,10 +246,13 @@ def safe_decode_qr(image_bytes: bytes) -> str | None:
 def parse_nepalqr_emvco(payload: str) -> dict[str, str]:
     tags = {}
     idx = 0
-    while idx < len(payload) - 4:
+    payload_len = len(payload)
+    while idx < payload_len - 4:
         tag = payload[idx:idx+2]
         try:
             length = int(payload[idx+2:idx+4])
+            if length < 0 or idx + 4 + length > payload_len:
+                break
             val = payload[idx+4:idx+4+length]
             tags[tag] = val
             idx += 4 + length
@@ -292,7 +318,7 @@ def evaluate_threat(payload: str) -> AssessmentResult:
             
             # Identify bank transfers vs mobile telecom accounts
             is_bank_transfer = "accountNumber" in data or "bankCode" in data or "bankCodeCIPS" in data
-            is_valid_telecom = bool(re.match(r"^(98|97)\d{8}$", str(account)))
+            is_valid_telecom = bool(RE_TELECOM_PHONE.match(str(account)))
             
             if is_bank_transfer:
                 bcode = str(data.get("bankCode") or data.get("bankCodeCIPS") or "").lower()
@@ -340,7 +366,7 @@ def evaluate_threat(payload: str) -> AssessmentResult:
             score += 50
 
     # Case C: Native App Schemes (Deep Links)
-    scheme_match = re.match(r"^([a-zA-Z0-9_-]+)://", payload)
+    scheme_match = RE_APP_SCHEME.match(payload)
     if scheme_match:
         app_scheme = scheme_match.group(1).lower()
         for brand, cfg in LICENSED_FINTECH_REGISTRY.items():
@@ -359,7 +385,7 @@ def evaluate_threat(payload: str) -> AssessmentResult:
 
     # Case D: Web URLs & Gateway Endpoints
     parsed = urlparse(payload)
-    if parsed.scheme in ["http", "https"] and parsed.netloc:
+    if RE_WEB_SCHEME.match(parsed.scheme) and parsed.netloc:
         payload_type = "Web URL"
         domain = parsed.netloc.lower().split(":")[0]
         canonical_target = f"{parsed.scheme}://{domain}{parsed.path}"
@@ -421,10 +447,13 @@ def evaluate_threat(payload: str) -> AssessmentResult:
                     is_personal_p2p=False
                 )
 
-        # Check 2: Mobile App Attribution & Deep-Linking Gateways (e.g. laxmi-remittance.onelink.me)
-        matched_router = next((name for router_domain, name in APP_ATTRIBUTION_ROUTERS.items() if domain.endswith(router_domain)), None)
-        if matched_router:
-            subdomain = domain.split(".")[0].lower()
+        # Check 2: Mobile App Attribution & Deep-Linking Gateways (e.g. samplebank-promo.onelink.me)
+        router_match = RE_ATTRIBUTION_ROUTER.match(domain)
+        if router_match:
+            matched_router_domain = router_match.group("router")
+            matched_router = APP_ATTRIBUTION_ROUTERS[matched_router_domain]
+            matched_subdomain = router_match.group("subdomain")
+            subdomain = matched_subdomain.split(".")[0].lower() if matched_subdomain else domain.split(".")[0].lower()
             
             # Check if the subdomain references any licensed bank or wallet
             identified_brand = None
@@ -558,17 +587,26 @@ def main():
             # 1. Aligned Status Banner
             banner_class = "banner-safe" if result.verdict in ["SAFE", "LOW_RISK"] else ("banner-warn" if result.verdict == "SUSPICIOUS_UNVERIFIED" else "banner-critical")
             status_symbol = "✅" if "SAFE" in result.verdict or "LOW" in result.verdict else ("⚠️" if "SUSPICIOUS" in result.verdict else "🚨")
+            safe_verdict = html.escape(result.verdict.replace('_', ' '))
             
             st.markdown(f"""
             <div class="status-banner {banner_class}">
                 <div>
                     <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;">Assessment Verdict</span>
-                    <h3 style="margin: 0; padding: 0;">{status_symbol} {result.verdict.replace('_', ' ')}</h3>
+                    <h3 style="margin: 0; padding: 0;">{status_symbol} {safe_verdict}</h3>
                 </div>
                 <div style="text-align: right;">
                     <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;">Threat Score</span>
                     <h2 style="margin: 0; padding: 0;">{result.risk_score} <span style="font-size: 1rem; opacity: 0.6;">/ 100</span></h2>
                 </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Inspected Canonical Target (HTML Encoded)
+            safe_target = html.escape(result.canonical_target)
+            st.markdown(f"""
+            <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 14px;">
+                🎯 <b>Inspected Target:</b> <code style="word-break: break-all; color: #38bdf8;">{safe_target}</code>
             </div>
             """, unsafe_allow_html=True)
 
@@ -589,18 +627,20 @@ def main():
                     b_cols = st.columns(len(result.beneficiary))
                     for idx, (k, v) in enumerate(result.beneficiary.items()):
                         with b_cols[idx]:
-                            st.caption(k)
-                            st.markdown(f"**{v}**")
+                            st.caption(html.escape(str(k)))
+                            st.markdown(f"**{html.escape(str(v))}**", unsafe_allow_html=True)
 
             # 4. Live Verification Checklist
             st.markdown("##### 📋 Forensic Verification Checklist")
             st.markdown('<div class="telemetry-card">', unsafe_allow_html=True)
             for check_name, (passed, detail) in result.checklist.items():
                 icon = "🟢" if passed else "🔴"
+                safe_check_name = html.escape(str(check_name))
+                safe_detail = html.escape(str(detail))
                 st.markdown(f"""
                 <div class="checklist-row">
-                    <span>{icon} <b>{check_name}</b></span>
-                    <span style="opacity: 0.85;">{detail}</span>
+                    <span>{icon} <b>{safe_check_name}</b></span>
+                    <span style="opacity: 0.85;">{safe_detail}</span>
                 </div>
                 """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -610,12 +650,13 @@ def main():
             if result.flags:
                 tags = []
                 for f in result.flags:
+                    safe_f = html.escape(str(f))
                     if "CRITICAL" in result.verdict or "TYPOSQUATTING" in f:
-                        tags.append(f"<span class='threat-tag-critical'>{f}</span>")
+                        tags.append(f"<span class='threat-tag-critical'>{safe_f}</span>")
                     elif "ANOMALOUS" in f or "UNENCRYPTED" in f:
-                        tags.append(f"<span class='threat-tag-warn'>{f}</span>")
+                        tags.append(f"<span class='threat-tag-warn'>{safe_f}</span>")
                     else:
-                        tags.append(f"<span class='threat-tag-info'>{f}</span>")
+                        tags.append(f"<span class='threat-tag-info'>{safe_f}</span>")
                 st.markdown(" ".join(tags), unsafe_allow_html=True)
             else:
                 st.write("No anomalous risk indicators triggered.")
