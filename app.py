@@ -54,7 +54,7 @@ UI_CUSTOM_CSS = """
     }
 
     /* 2. Container Panels, Cards & Expanders */
-    .telemetry-card {
+    .archival-card, .telemetry-card {
         background-color: #ede8db;
         border: 1px solid #d6cebf;
         border-radius: 6px;
@@ -201,6 +201,31 @@ UI_CUSTOM_CSS = """
         color: #b45309 !important;
         border-bottom-color: #b45309 !important;
         font-weight: 600 !important;
+    }
+
+    /* 9. Radio Buttons & Toggle Controls */
+    [data-testid="stRadio"] label {
+        color: #292524 !important;
+        font-family: Georgia, 'Times New Roman', serif !important;
+        font-size: 0.9rem !important;
+    }
+    [data-testid="stRadio"] div[role="radiogroup"] {
+        gap: 16px;
+        padding: 4px 0 10px 0;
+    }
+
+    /* 10. Responsive Breakpoints & Mobile Workstation Wrapping */
+    @media (max-width: 768px) {
+        [data-testid="column"] {
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+            padding-bottom: 2rem !important;
+        }
     }
 </style>
 """
@@ -686,58 +711,76 @@ def evaluate_threat(payload: str) -> AssessmentResult:
 
 def main():
     st.set_page_config(
-        page_title="SajagQR Shield | Threat Forensics",
+        page_title="SajagQR Shield - Forensic Scanner",
         page_icon="🛡️",
         layout="wide",
         initial_sidebar_state="collapsed"
     )
     st.markdown(UI_CUSTOM_CSS, unsafe_allow_html=True)
 
-    # --- USER INTERFACE ---
-    col_logo, col_desc = st.columns([0.08, 0.92])
-    with col_logo:
-        st.markdown("<h1 style='margin:0; padding:0;'>🛡️</h1>", unsafe_allow_html=True)
-    with col_desc:
-        st.markdown("### **SajagQR Shield — Anti-Quishing & Payment Telemetry Engine**")
-        st.caption("Forensic payload inspection, brand typosquatting defense, and recipient zero-trust validation for Nepal's digital payment ecosystem.")
+    # --- FORENSIC WORKSTATION HEADER ---
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+        <span style="font-size: 2.2rem; line-height: 1;">🛡️</span>
+        <div>
+            <h2 style="margin: 0; font-size: 1.65rem; font-weight: 700; color: #1c1917;">SajagQR Shield — Anti-Quishing &amp; Payment Telemetry Engine</h2>
+            <p style="margin: 2px 0 0 0; font-size: 0.9rem; color: #57534e;">Forensic payload inspection, brand typosquatting defense, and recipient zero-trust validation for Nepal's digital payment ecosystem.</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.divider()
+    st.markdown("---")
 
-    col_input, col_audit = st.columns([1, 1.25], gap="large")
+    # --- DUAL-PANE FORENSIC WORKSTATION ARCHITECTURE ---
+    col_input, col_telemetry = st.columns([5, 6], gap="large")
 
     input_provided = False
     raw_payload_to_test = None
 
+    # LEFT COLUMN: Ingestion & Controls
     with col_input:
-        st.markdown("#### 📥 Code Ingestion")
-        tab_cam, tab_file, tab_url = st.tabs(["📸 Camera Snap", "📁 Upload Image", "🔗 Raw Link / URL"])
-        
-        with tab_cam:
-            cam_snap = st.camera_input("Position QR code in center of frame", label_visibility="collapsed")
+        st.markdown("### 📷 Capture & Ingestion")
+
+        ingest_mode = st.radio(
+            "Ingestion Source",
+            ["Live Camera Stream", "Upload Standee Image"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
+
+        if ingest_mode == "Live Camera Stream":
+            cam_snap = st.camera_input("Position QR code in center of frame")
             if cam_snap:
                 input_provided = True
                 with st.spinner("Decoding matrix..."):
                     raw_payload_to_test = safe_decode_qr(cam_snap.getvalue())
-                st.image(cam_snap, caption="Live Frame Capture", width=220)
-                
-        with tab_file:
-            up_file = st.file_uploader("Upload screenshot or image (PNG, JPG)", type=["png", "jpg", "jpeg"], label_visibility="collapsed")
+                st.image(cam_snap, caption="Live Frame Capture", use_container_width=True)
+        else:
+            up_file = st.file_uploader(
+                "Upload screenshot or image (PNG, JPG)",
+                type=["png", "jpg", "jpeg"]
+            )
             if up_file:
                 input_provided = True
                 with st.spinner("Decoding matrix..."):
                     raw_payload_to_test = safe_decode_qr(up_file.getvalue())
-                st.image(up_file, caption="Uploaded Artifact", width=220)
+                st.image(up_file, caption="Uploaded Artifact", use_container_width=True)
 
-        with tab_url:
+        with st.expander("🔗 Direct Payload / URL Audit", expanded=False):
             st.caption("Audit direct URLs, payment links, or mobile deep links without an image:")
-            manual_url = st.text_input("Enter or paste link payload", placeholder="https://esewa-verification.com/login or fonepay://...")
+            manual_url = st.text_input(
+                "Enter or paste link payload",
+                placeholder="https://esewa-verification.com/login or fonepay://...",
+                key="manual_payload_input"
+            )
             if manual_url and manual_url.strip():
                 input_provided = True
                 raw_payload_to_test = manual_url.strip()
 
-    with col_audit:
-        st.markdown("#### 🔍 Real-Time Forensics & Telemetry")
-        
+    # RIGHT COLUMN: Threat Telemetry & Parsing
+    with col_telemetry:
+        st.markdown("### 🔬 Threat Telemetry & Parsing")
+
         if input_provided and not raw_payload_to_test:
             st.error("❌ No QR Code structure detected. Clean the lens, adjust lighting, or try a clearer image frame.")
         elif raw_payload_to_test:
@@ -747,7 +790,7 @@ def main():
             banner_class = "banner-safe" if result.verdict in ["SAFE", "LOW_RISK"] else ("banner-warn" if result.verdict == "SUSPICIOUS_UNVERIFIED" else "banner-critical")
             status_symbol = "✅" if "SAFE" in result.verdict or "LOW" in result.verdict else ("⚠️" if "SUSPICIOUS" in result.verdict else "🚨")
             safe_verdict = html.escape(result.verdict.replace('_', ' '))
-            
+
             st.markdown(f"""
             <div class="status-banner {banner_class}">
                 <div>
@@ -791,7 +834,7 @@ def main():
 
             # 4. Live Verification Checklist
             st.markdown("##### 📋 Forensic Verification Checklist")
-            st.markdown('<div class="telemetry-card">', unsafe_allow_html=True)
+            st.markdown('<div class="archival-card">', unsafe_allow_html=True)
             for check_name, (passed, detail) in result.checklist.items():
                 icon = "🟢" if passed else "🔴"
                 safe_check_name = html.escape(str(check_name))
@@ -810,9 +853,9 @@ def main():
                 tags = []
                 for f in result.flags:
                     safe_f = html.escape(str(f))
-                    if "CRITICAL" in result.verdict or "TYPOSQUATTING" in f:
+                    if "CRITICAL" in result.verdict or "TYPOSQUATTING" in f or "TAMPER" in f:
                         tags.append(f"<span class='threat-tag-critical'>{safe_f}</span>")
-                    elif "ANOMALOUS" in f or "UNENCRYPTED" in f:
+                    elif "ANOMALOUS" in f or "UNENCRYPTED" in f or "OBFUSCATED" in f:
                         tags.append(f"<span class='threat-tag-warn'>{safe_f}</span>")
                     else:
                         tags.append(f"<span class='threat-tag-info'>{safe_f}</span>")
@@ -843,11 +886,17 @@ def main():
 
         else:
             # High-Density Idle State Panel (Archival Print Theme)
-            idle_panel_html = """<div class="telemetry-card">
+            idle_panel_html = """<div class="archival-card">
 <h4>⚡ Engine Ready &amp; Threat Intelligence Active</h4>
-<p style="opacity: 0.85; font-size: 0.88rem; color: #44403c;">
+<p style="opacity: 0.85; font-size: 0.88rem; color: #44403c; margin-top: 6px;">
 Awaiting input from the left panel. SajagQR continuously audits payloads against licensed Nepal Rastra Bank directives and active quishing signatures.
 </p>
+<div style="margin: 12px 0; display: flex; flex-wrap: wrap; gap: 6px;">
+<span class="threat-tag-info">EMVCo Interoperable</span>
+<span class="threat-tag-info">NepalQR Standard</span>
+<span class="threat-tag-info">Standee Swap Defense</span>
+<span class="threat-tag-info">Zero-Trust Telemetry</span>
+</div>
 <hr style="border-color: #d6cebf; margin: 12px 0;">
 <h6 style="margin-bottom: 8px;">Active Detection Capabilities</h6>
 <ul style="font-size: 0.84rem; opacity: 0.9; line-height: 1.7; padding-left: 20px; color: #292524;">
@@ -890,8 +939,9 @@ Awaiting input from the left panel. SajagQR continuously audits payloads against
 </div>"""
             st.markdown(idle_panel_html, unsafe_allow_html=True)
 
-    # --- COMMUNITY FEEDBACK & ISSUE REPORTING ---
-    st.divider()
+    # --- BOTTOM UTILITY SECTION ---
+    st.markdown("---")
+
     with st.expander("💬 Share Feedback / Report an Issue", expanded=False):
         st.markdown(
             "Have suggestions or spotted a new QR scam pattern? "
@@ -1005,6 +1055,14 @@ Awaiting input from the left panel. SajagQR continuously audits payloads against
         </html>
         """
         st.iframe(feedback_html, height=310)
+
+    with st.expander("📚 Forensic Engine Architecture & Threat Model", expanded=False):
+        st.markdown("""
+        **SajagQR Shield** operates strictly on client-side, zero-trust telemetry:
+        - **100% Offline Payload Inspection:** QR matrices are decoded locally via OpenCV and ZBar. No images or payment payloads are sent to third-party servers.
+        - **Deterministic Verification:** TLV metadata parsing, CRC-16 checksum computation, and punycode homoglyph checks execute in-memory with precompiled ReDoS-safe patterns.
+        - **Nepal Rastra Bank Standard Alignment:** Fully adheres to NRB NepalQR specifications and the EMVCo QR Code Merchant-Presented Mode standard.
+        """)
 
 if __name__ == "__main__":
     main()
