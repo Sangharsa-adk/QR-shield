@@ -62,7 +62,7 @@ The application provides three input channels tailored for different incident re
 
 ## 2. Multi-Stage Computer Vision Decoding Pipeline
 
-QR codes captured at point-of-sale standees frequently suffer from glare, smudges, poor ambient lighting, and camera angle distortion. SajagQR deploys a progressive 3-stage decoding fallback pipeline in [`safe_decode_qr`](file:///c:/projects/sajag-qr/QR-shield/app.py#L207):
+QR codes captured at point-of-sale standees frequently suffer from glare, smudges, poor ambient lighting, and camera angle distortion. SajagQR deploys a progressive 3-stage decoding fallback pipeline in [`safe_decode_qr`](../app.py):
 
 1. **Pass 1 — High-Speed Native `pyzbar`**:
    The input byte stream is converted to a NumPy array, decoded with OpenCV into BGR format, converted to grayscale, and passed to the C-based `zbar` engine.
@@ -75,33 +75,34 @@ QR codes captured at point-of-sale standees frequently suffer from glare, smudge
 
 ## 3. Threat Heuristics Engine
 
-Once the payload string is recovered, [`evaluate_threat`](file:///c:/projects/sajag-qr/QR-shield/app.py#L260) analyzes the payload structure against institutional registries and security directives:
+Once the payload string is recovered, [`evaluate_threat`](../app.py) analyzes the payload structure against institutional registries and security directives:
 
-### 3.1 EMVCo (NepalQR) TLV Decoder
+### 3.1 EMVCo (NepalQR) TLV Decoder & CRC-16 Verification
 When a payload begins with `000201` and contains `5802NP`, it represents the interoperable NepalQR standard approved by Nepal Rastra Bank (NRB). The parser traverses the Tag-Length-Value (TLV) byte structures:
 - **Tag 59**: Merchant Name
 - **Tag 60**: Merchant City
 - **Tag 58**: Country Code (`NP`)
-- **Verdict**: `SAFE` (Threat Score: `0/100`)
+- **Tag 63**: CRC-16/CCITT-FALSE Checksum verification (polynomial `0x1021`, initial value `0xFFFF` across all bytes up to `6304`). Payloads with invalid or altered checksums are flagged with `EMVCO_CHECKSUM_TAMPER_DETECTED` (`CRITICAL_FRAUD_RISK`, Threat Score: `85/100`).
+- **Verdict**: `SAFE` (Threat Score: `0/100`) upon clean CRC-16 integrity match.
 
 ### 3.2 In-App JSON Analyzer & Physical Standee Swap Detection
 Mobile wallet apps (eSewa, Khalti, PrabhuPAY) often generate JSON payloads for direct transfers. The engine:
 1. Validates the JSON schema and scans for official identity keys (`eSewa_id`, `khalti_id`, `prabhu_id`, `hamropay_id`, `accountNumber`).
 2. Checks beneficiary account numbers:
    - **Bank Accounts (`accountNumber` / `bankCodeCIPS`)**: Validated as institutional settlement transfers without mobile number format penalties.
-   - **Telecom Mobile Identifiers**: Validated against Nepal's 10-digit mobile numbering plan (`^(98|97)\d{8}$`).
+   - **Telecom Mobile Identifiers**: Validated against Nepal's 10-digit mobile numbering plan (`RE_TELECOM_PHONE = ^(98|97)\d{8}$`).
 3. **Physical Standee Swap Advisory**: When an individual P2P wallet is identified (`is_personal_p2p = True`), a warning is surfaced:
    > *Advisory: This payload points to an individual personal wallet, NOT an institutional merchant stand. If scanning at a counter, verify that no overlay sticker has been pasted over the merchant's real standee.*
 
 ### 3.3 Licensed Mobile Deep-Link Router
-Verifies native application invocation schemes against registered fintech applications (`esewa://`, `khalti://`, `fonepay://`, `connectips://`, `nepalpay://`, etc.):
+Verifies native application invocation schemes against registered fintech applications (`esewa://`, `khalti://`, `fonepay://`, `connectips://`, `nepalpay://`, etc.) using precompiled ReDoS-safe patterns:
 - Verified app schemes return `CONTROLLED_DEEP_LINK` or `LOW_RISK`.
 - Unrecognized or raw URI schemes trigger an anomalous structure warning.
 
 ### 3.4 Web Gateway, Attribution & Typosquatting Filter
 For HTTP/HTTPS payloads, the engine applies layered static filtering:
 1. **Unencrypted HTTP Penalty**: `+35` risk score for plaintext `http://` transport.
-2. **Punycode / Homoglyph Detection**: `+50` risk score for internationalized domain names (`xn--`) mimicking Nepali banks.
+2. **Punycode / Homoglyph Detection**: `+75` risk score for internationalized domain names (`xn--`) mimicking Nepali banks (triggers `CRITICAL_FRAUD_RISK`).
 3. **Obfuscated Short URL Detection**: `+75` to `+80` risk score for link shorteners (`bit.ly`, `tinyurl.com`, `rb.gy`, `t.co`, `cutt.ly`, `is.gd`, `v.gd`) that hide final landing destinations.
 4. **Institutional Whitelist Verification**:
    - **FinTech Registry**: Matches official domains for eSewa, Khalti, Fonepay, connectIPS, NEPALPAY, PrabhuPAY, Hamro Pay, IME Pay, Namaste Pay, Moru, and NRB.
