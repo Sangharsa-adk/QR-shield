@@ -2,6 +2,7 @@ import html
 import json
 import re
 from urllib.parse import urlparse
+
 import cv2
 import numpy as np
 from pydantic import BaseModel, Field
@@ -270,6 +271,32 @@ def parse_nepalqr_emvco(payload: str) -> dict[str, str]:
         "Payload Structure": "EMVCo Tag-Length-Value"
     }
 
+def verify_emvco_crc(payload: str) -> bool:
+    """Verify EMVCo Tag 63 CRC-16/CCITT-FALSE checksum.
+
+    The checksum is calculated over all bytes up to and including '6304'.
+    Polynomial: 0x1021, Initial value: 0xFFFF.
+    """
+    if len(payload) < 8 or "6304" not in payload:
+        return False
+    idx = payload.rfind("6304")
+    data_to_hash = payload[:idx + 4]
+    provided_crc = payload[idx + 4:idx + 8].upper()
+    if len(provided_crc) != 4:
+        return False
+
+    crc = 0xFFFF
+    for b in data_to_hash.encode("utf-8"):
+        crc ^= (b << 8)
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
+            else:
+                crc = (crc << 1) & 0xFFFF
+
+    expected_crc = f"{crc:04X}"
+    return expected_crc == provided_crc
+
 # 6. Threat Evaluator
 def evaluate_threat(payload: str) -> AssessmentResult:
     payload = payload.strip()
@@ -290,6 +317,21 @@ def evaluate_threat(payload: str) -> AssessmentResult:
     # Case A: Interoperable NepalQR / EMVCo Standee (Merchant Stands)
     if payload.startswith("000201") and "5802NP" in payload:
         emv_info = parse_nepalqr_emvco(payload)
+        is_valid_crc = verify_emvco_crc(payload)
+
+        if not is_valid_crc:
+            checklist["Protocol Integrity"] = (False, "EMVCo CRC-16 checksum verification failed (tampered payload)")
+            return AssessmentResult(
+                risk_score=85,
+                verdict="CRITICAL_FRAUD_RISK",
+                flags=["EMVCO_CHECKSUM_TAMPER_DETECTED"],
+                payload_type="Tampered NepalQR Merchant Standee",
+                canonical_target=f"{emv_info['Merchant POS Name']} ({emv_info['Registered Location']})",
+                checklist=checklist,
+                beneficiary=emv_info,
+                is_personal_p2p=False
+            )
+
         return AssessmentResult(
             risk_score=0,
             verdict="SAFE",
@@ -398,7 +440,7 @@ def evaluate_threat(payload: str) -> AssessmentResult:
         if "xn--" in domain:
             checklist["Domain & Routing"] = (False, "Punycode character spoofing detected")
             flags.append("PUNYCODE_HOMOGLYPH_SUSPECT")
-            score += 50
+            score += 75
 
         if any(domain == s or domain.endswith("." + s) for s in SUSPICIOUS_SHORTENERS):
             checklist["Domain & Routing"] = (False, "Link shortener hiding destination")
