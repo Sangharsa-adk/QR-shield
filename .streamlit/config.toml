@@ -4,3 +4,6 @@ toolbarMode = "minimal"   # Hides developer menus and GitHub source links
 [browser]
 gatherUsageStats = false
 
+[server]
+headless = true
+
