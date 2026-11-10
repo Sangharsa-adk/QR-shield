@@ -1,26 +1,52 @@
 """Unit test suite for SajagQR heuristic and static threat evaluation engine."""
 
+import html
 import json
+
 import pytest
+
 from app import evaluate_threat
 
 
 class TestNepalQREMVCo:
-    """Tests for EMVCo / NepalQR interoperable merchant payloads."""
+    """Tests for EMVCo / NepalQR interoperable merchant standee payloads."""
 
-    def test_official_nepalqr_emvco_payload_returns_safe(self):
-        """EMVCo standard payload with 5802NP should be classified as SAFE."""
-        payload = "0002010102125802NP5911Bhatbhateni6009Kathmandu6304ABCD"
+    def test_valid_nepalqr_emvco_payload_with_clean_crc_returns_safe(self):
+        """Valid EMVCo standard payload (5802NP, Tags 59, 60) with clean CRC-16 must return SAFE."""
+        # 0002010102125802NP5917Demo Merchant POS6009Kathmandu6304 -> CRC is EBC2
+        payload = "0002010102125802NP5917Demo Merchant POS6009Kathmandu6304EBC2"
         result = evaluate_threat(payload)
 
         assert result.verdict == "SAFE"
         assert result.risk_score == 0
         assert "OFFICIAL_NEPALQR_EMVCO_SPECIFICATION" in result.flags
         assert result.payload_type == "National NepalQR Merchant Standee"
-        assert "Bhatbhateni" in result.canonical_target
+        assert "Demo Merchant POS" in result.canonical_target
         assert result.is_personal_p2p is False
-        assert result.beneficiary["Merchant POS Name"] == "Bhatbhateni"
+        assert result.beneficiary["Merchant POS Name"] == "Demo Merchant POS"
         assert result.beneficiary["Registered Location"] == "Kathmandu, NP"
+        assert result.checklist["Protocol Integrity"][0] is True
+
+    def test_tampered_emvco_payload_with_modified_checksum_flags_critical(self):
+        """Tampered EMVCo standee with altered CRC checksum must return CRITICAL_FRAUD_RISK."""
+        # Checksum is ABCD instead of valid EBC2
+        tampered_payload = "0002010102125802NP5917Demo Merchant POS6009Kathmandu6304ABCD"
+        result = evaluate_threat(tampered_payload)
+
+        assert result.verdict == "CRITICAL_FRAUD_RISK"
+        assert result.risk_score >= 70
+        assert "EMVCO_CHECKSUM_TAMPER_DETECTED" in result.flags
+        assert result.checklist["Protocol Integrity"][0] is False
+
+    def test_tampered_emvco_payload_with_altered_merchant_flags_critical(self):
+        """EMVCo payload with tampered merchant body but un-updated CRC must fail verification."""
+        # Merchant name altered from 'Demo Merchant POS' to 'Fake Merchant POS' keeping EBC2
+        tampered_payload = "0002010102125802NP5917Fake Merchant POS6009Kathmandu6304EBC2"
+        result = evaluate_threat(tampered_payload)
+
+        assert result.verdict == "CRITICAL_FRAUD_RISK"
+        assert result.risk_score >= 70
+        assert "EMVCO_CHECKSUM_TAMPER_DETECTED" in result.flags
 
 
 class TestInAppWalletJSON:
@@ -29,14 +55,14 @@ class TestInAppWalletJSON:
     @pytest.mark.parametrize(
         "json_payload, expected_provider",
         [
-            ('{"eSewa_id": "9841234567", "name": "Ram Sharma"}', "eSewa (F1Soft Ecosystem)"),
-            ('{"khalti_id": "9801234567", "amount": 1000}', "Khalti Digital Wallet"),
-            ('{"phone": "9851000000", "prabhu_id": "PRABHU123"}', "PrabhuPAY"),
-            ('{"hamropay_id": "9812345678", "phone": "9812345678"}', "Hamro Pay (Hamro Patro)"),
+            ('{"eSewa_id": "9800000001", "name": "Mock User"}', "eSewa (F1Soft Ecosystem)"),
+            ('{"khalti_id": "9800000002", "amount": 1000}', "Khalti Digital Wallet"),
+            ('{"phone": "9800000003", "prabhu_id": "MOCK123"}', "PrabhuPAY"),
+            ('{"hamropay_id": "9700000004", "phone": "9700000004"}', "Hamro Pay (Hamro Patro)"),
         ],
     )
     def test_standard_in_app_json_wallet_transfers(self, json_payload, expected_provider):
-        """Standard in-app JSON wallet transfers should return SAFE or LOW_RISK."""
+        """Standard in-app JSON wallet transfers with valid 10-digit mobile identifiers return SAFE/LOW_RISK."""
         result = evaluate_threat(json_payload)
 
         assert result.verdict in ["SAFE", "LOW_RISK"]
@@ -45,6 +71,25 @@ class TestInAppWalletJSON:
         assert result.is_personal_p2p is True
         assert result.beneficiary["Wallet Ecosystem"] == expected_provider
         assert result.checklist["Beneficiary Syntax"][0] is True
+
+    @pytest.mark.parametrize(
+        "malformed_phone",
+        [
+            "12345",
+            "+9779800000001",
+            "9900000000",
+            "9800000",
+            "abcdefghij",
+        ],
+    )
+    def test_malformed_p2p_wallet_phone_flags_anomalous(self, malformed_phone):
+        """Non-standard or malformed mobile formats must trigger ANOMALOUS_ACCOUNT_FORMAT."""
+        payload = json.dumps({"eSewa_id": malformed_phone, "name": "Mock Account"})
+        result = evaluate_threat(payload)
+
+        assert "ANOMALOUS_ACCOUNT_FORMAT" in result.flags
+        assert result.checklist["Beneficiary Syntax"][0] is False
+        assert result.risk_score >= 20
 
     def test_institutional_bank_account_json_transfer(self):
         """Bank transfer JSON (e.g. connectIPS) should be verified without telecom syntax penalty."""
@@ -63,8 +108,8 @@ class TestAppAttributionRouters:
     """Tests for universal mobile app attribution and deep-linking gateways."""
 
     def test_appsflyer_attribution_router_with_linked_brand(self):
-        """AppsFlyer OneLink router with a linked bank/fintech subdomain returns SAFE."""
-        url = "https://samplebank-promo.onelink.me/demo"
+        """Sanitized AppsFlyer OneLink router with a linked bank/fintech subdomain returns SAFE."""
+        url = "https://samplebank-promo.onelink.me/app"
         result = evaluate_threat(url)
 
         assert result.verdict in ["SAFE", "LOW_RISK"]
@@ -73,8 +118,28 @@ class TestAppAttributionRouters:
         assert result.payload_type == "Smart App Routing Gateway"
         assert result.beneficiary["Attribution Platform"] == "AppsFlyer OneLink Smart Router"
 
+    def test_branch_io_attribution_router(self):
+        """Branch.io deep link router returns verified routing gateway."""
+        url = "https://mockbank-promo.app.link/pay"
+        result = evaluate_threat(url)
+
+        assert result.verdict in ["SAFE", "LOW_RISK"]
+        assert result.risk_score <= 10
+        assert "VERIFIED_APP_DEEP_LINK_ROUTER" in result.flags
+        assert result.beneficiary["Attribution Platform"] == "Branch.io Universal Deep Link"
+
+    def test_firebase_dynamic_links_router(self):
+        """Google Firebase dynamic link router returns verified routing gateway."""
+        url = "https://mockwallet.page.link/promo"
+        result = evaluate_threat(url)
+
+        assert result.verdict in ["SAFE", "LOW_RISK"]
+        assert result.risk_score <= 10
+        assert "VERIFIED_APP_DEEP_LINK_ROUTER" in result.flags
+        assert result.beneficiary["Attribution Platform"] == "Google Firebase Dynamic Link"
+
     def test_generic_attribution_router_without_brand(self):
-        """Generic attribution router returns LOW_RISK."""
+        """Generic attribution router returns LOW_RISK with third-party attribution platform."""
         url = "https://campaign-promo.onelink.me/app"
         result = evaluate_threat(url)
 
@@ -84,12 +149,29 @@ class TestAppAttributionRouters:
         assert result.beneficiary["Linked Institution"] == "Third-party Mobile Campaign"
 
 
-class TestTyposquattingAndPhishing:
-    """Tests for brand spoofing, lookalike domains, and phishing URLs."""
+class TestPunycodeAndTyposquatting:
+    """Tests for punycode homoglyphs, brand spoofing, lookalike domains, and phishing URLs."""
+
+    @pytest.mark.parametrize(
+        "punycode_url",
+        [
+            "https://xn--eswa-1ra.com/login",
+            "https://xn--nbl-7ka.com/ebanking",
+        ],
+    )
+    def test_punycode_homoglyph_urls_return_critical(self, punycode_url):
+        """Punycode homoglyph domains ('xn--') must trigger CRITICAL_FRAUD_RISK."""
+        result = evaluate_threat(punycode_url)
+
+        assert result.verdict == "CRITICAL_FRAUD_RISK"
+        assert result.risk_score >= 70
+        assert "PUNYCODE_HOMOGLYPH_SUSPECT" in result.flags
+        assert result.checklist["Domain & Routing"][0] is False
 
     @pytest.mark.parametrize(
         "phishing_url, target_flag",
         [
+            ("https://nabil-verify.com/login", "TYPOSQUATTING_TARGETING_NABIL"),
             ("https://esewa-verification.net/login", "TYPOSQUATTING_TARGETING_ESEWA"),
             ("https://login-khalti.com.secure-auth.xyz/verify", "TYPOSQUATTING_TARGETING_KHALTI"),
             ("https://fonepay.support-portal.org/claim", "TYPOSQUATTING_TARGETING_FONEPAY"),
@@ -97,7 +179,7 @@ class TestTyposquattingAndPhishing:
         ],
     )
     def test_typosquatting_phishing_urls_return_critical(self, phishing_url, target_flag):
-        """Brand typosquatting and phishing domains must trigger CRITICAL_FRAUD_RISK."""
+        """Brand typosquatting and spoofed bank domains must trigger CRITICAL_FRAUD_RISK."""
         result = evaluate_threat(phishing_url)
 
         assert result.verdict == "CRITICAL_FRAUD_RISK"
@@ -198,7 +280,6 @@ class TestInputSanitizationAndInjectionDefense:
         assert "ANOMALOUS_ACCOUNT_FORMAT" in result.flags
         assert xss_account in result.beneficiary["Recipient Account"]
         # Verify html.escape neutralizes the payload
-        import html
         escaped = html.escape(result.beneficiary["Recipient Account"])
         assert "<script>" not in escaped
         assert "&lt;script&gt;" in escaped
@@ -207,14 +288,12 @@ class TestInputSanitizationAndInjectionDefense:
         """Weaponized HTML tag in Tag 59 merchant name is extracted and neutralizable."""
         tag59_val = "<img src=x onerror=alert(1)>"
         length_str = f"{len(tag59_val):02d}"
-        payload = f"0002010102125802NP59{length_str}{tag59_val}6009Kathmandu6304ABCD"
+        # Calculated CRC for 0002010102125802NP5928<img src=x onerror=alert(1)>6009Kathmandu6304 is 65B1
+        payload = f"0002010102125802NP59{length_str}{tag59_val}6009Kathmandu630465B1"
         result = evaluate_threat(payload)
 
         assert result.verdict == "SAFE"
         assert result.beneficiary["Merchant POS Name"] == tag59_val
-        import html
         escaped = html.escape(result.beneficiary["Merchant POS Name"])
         assert "<img" not in escaped
         assert "&lt;img" in escaped
-
-
