@@ -5,9 +5,9 @@ from urllib.parse import urlparse
 
 import cv2
 import numpy as np
+import streamlit as st
 from pydantic import BaseModel, Field
 from pyzbar.pyzbar import decode
-import streamlit as st
 
 # ---------------------------------------------------------
 # ReDoS Defense & Precompiled Deterministic Regular Expressions
