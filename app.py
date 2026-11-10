@@ -718,13 +718,20 @@ def main():
     )
     st.markdown(UI_CUSTOM_CSS, unsafe_allow_html=True)
 
-    # --- FORENSIC WORKSTATION HEADER ---
+    # --- FORENSIC HERO HEADER (Archival Print Theme) ---
     st.markdown("""
-    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
-        <span style="font-size: 2.2rem; line-height: 1;">🛡️</span>
-        <div>
-            <h2 style="margin: 0; font-size: 1.65rem; font-weight: 700; color: #1c1917;">SajagQR Shield — Anti-Quishing &amp; Payment Telemetry Engine</h2>
-            <p style="margin: 2px 0 0 0; font-size: 0.9rem; color: #57534e;">Forensic payload inspection, brand typosquatting defense, and recipient zero-trust validation for Nepal's digital payment ecosystem.</p>
+    <div style="margin-bottom: 1.5rem;">
+        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 2.2rem; color: #1c1917; margin-bottom: 0.25rem;">
+            🛡️ SajagQR Shield
+        </h1>
+        <p style="font-size: 1.05rem; font-weight: 500; color: #b45309; margin-bottom: 0.5rem;">
+            Forensic Payment QR & EMVCo Standee Integrity Engine
+        </p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem;">
+            <span style="background: #e2dac9; color: #44403c; border: 1px solid #c7bcab; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; font-family: monospace;">EMVCo Interoperable</span>
+            <span style="background: #e2dac9; color: #44403c; border: 1px solid #c7bcab; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; font-family: monospace;">NepalQR Standard</span>
+            <span style="background: #e2dac9; color: #44403c; border: 1px solid #c7bcab; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; font-family: monospace;">Standee Swap Defense</span>
+            <span style="background: #e2dac9; color: #44403c; border: 1px solid #c7bcab; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; font-family: monospace;">CRC-16 CCITT Audit</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -754,7 +761,7 @@ def main():
                 input_provided = True
                 with st.spinner("Decoding matrix..."):
                     raw_payload_to_test = safe_decode_qr(cam_snap.getvalue())
-                st.image(cam_snap, caption="Live Frame Capture", use_container_width=True)
+                st.image(cam_snap, caption="Live Frame Capture", width="stretch")
         else:
             up_file = st.file_uploader(
                 "Upload screenshot or image (PNG, JPG)",
@@ -764,7 +771,7 @@ def main():
                 input_provided = True
                 with st.spinner("Decoding matrix..."):
                     raw_payload_to_test = safe_decode_qr(up_file.getvalue())
-                st.image(up_file, caption="Uploaded Artifact", use_container_width=True)
+                st.image(up_file, caption="Uploaded Artifact", width="stretch")
 
         with st.expander("🔗 Direct Payload / URL Audit", expanded=False):
             st.caption("Audit direct URLs, payment links, or mobile deep links without an image:")
