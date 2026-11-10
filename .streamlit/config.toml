@@ -7,3 +7,10 @@ gatherUsageStats = false
 [server]
 headless = true
 
+[theme]
+base = "light"
+primaryColor = "#b45309"              # Aged amber / antique brass accent
+backgroundColor = "#f7f4ed"           # Warm cream / antique parchment paper
+secondaryBackgroundColor = "#ede8db"  # Deeper textured vellum / card tone
+textColor = "#292524"                 # Warm sepia / charcoal ink
+font = "serif"                        # Archival typography

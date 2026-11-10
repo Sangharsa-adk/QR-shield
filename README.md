@@ -45,11 +45,12 @@ It provides real-time forensic payload decoding, zero-trust beneficiary inspecti
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/Sangharsa-adk/QR-shield.git](https://github.com/Sangharsa-adk/QR-shield.git)
+git clone https://github.com/Sangharsa-adk/QR-shield.git
 cd QR-shield
+```
 
-2. Set Up Virtual Environment
-Bash
+### 2. Set Up Virtual Environment
+```bash
 # Linux / macOS
 python -m venv venv
 source venv/bin/activate
@@ -57,21 +58,26 @@ source venv/bin/activate
 # Windows (PowerShell)
 python -m venv venv
 .\venv\Scripts\Activate.ps1
+```
 
-3. Install Dependencies
-Bash
+### 3. Install Dependencies
+```bash
 pip install --upgrade pip
 pip install -r requirements.txt
+```
 
-4. Launch the Telemetry Dashboard
-Bash
+### 4. Launch the Telemetry Dashboard
+```bash
 streamlit run app.py
-The application will open in your browser at http://localhost:8501.
+```
+The application will open in your browser at `http://localhost:8501`.
 
-🛠️ Detection Methodology & Scoring Architecture
+---
+
+## 🛠️ Detection Methodology & Scoring Architecture
 Every ingested QR code passes through a four-stage forensic pipeline:
 
-Plaintext
+```text
 [QR Matrix / Raw URL]
          │
          ▼
@@ -86,42 +92,39 @@ Plaintext
                                            │
                                            ▼
 [Threat Engine] ─────────────────► Outputs Verdict (SAFE / LOW_RISK / SUSPICIOUS / CRITICAL)
+```
 
-* Threat Scoring Metrics
-SAFE (0 / 100): Official EMVCo NepalQR specifications, licensed banking portals, verified merchant standees.
-
-* LOW RISK (5–15 / 100): Validated in-app wallet transfers, verified AppsFlyer/Branch app attribution routing.
-
-* SUSPICIOUS (30–65 / 100): Unencrypted HTTP endpoints, unrecognized external hosts, nested subdomain chains.
-
-* CRITICAL FRAUD RISK (70–100 / 100): Detected brand typosquatting, Punycode homoglyphs, naked IP destinations, or obfuscated link shorteners concealing payment requests.
-
-🚨 Incident Response & Reporting
-When a payload receives a CRITICAL_FRAUD_RISK rating, SajagQR generates an exportable JSON incident artifact containing:
-* Raw payload signature and canonical target URL.
-* Triggered threat markers and heuristic flags.
-* Timestamped telemetry for filing fraud alerts with the Nepal Plice  Cyber Bureau:
-    Hotline: 01-5319044 / 100
-    Email: cyberbureau@nepalpolice.gov.np
-
-🤝 Contributing
-Contributions to expand signature coverage, improve CV decoding under extreme lighting, or add new PSP schemes are welcome!
-
-Fork the Project
-
-Create your Feature Branch (git checkout -b feature/NewFintechSupport)
-
-Commit your Changes (git commit -m 'Add detection rule for XYZ Gateway')
-
-Push to the Branch (git push origin feature/NewFintechSupport)
-
-Open a Pull Request
-
-📄 License
-Distributed under the MIT License. See LICENSE for more information.
-
-👤 Author
-Developed and maintained by Sangharsa Adhikari.
-
+### Threat Scoring Metrics
+* **SAFE (0 / 100):** Official EMVCo NepalQR specifications, licensed banking portals, verified merchant standees.
+* **LOW RISK (5–15 / 100):** Validated in-app wallet transfers, verified AppsFlyer/Branch app attribution routing.
+* **SUSPICIOUS (30–65 / 100):** Unencrypted HTTP endpoints, unrecognized external hosts, nested subdomain chains.
+* **CRITICAL FRAUD RISK (70–100 / 100):** Detected brand typosquatting, Punycode homoglyphs, naked IP destinations, or obfuscated link shorteners concealing payment requests.
 
 ---
+
+## 🚨 Incident Response & Reporting
+When a payload receives a `CRITICAL_FRAUD_RISK` rating, SajagQR generates an exportable JSON incident artifact containing:
+* Raw payload signature and canonical target URL.
+* Triggered threat markers and heuristic flags.
+* Timestamped telemetry for filing fraud alerts with the **Nepal Police Cyber Bureau**:
+  * **Hotline:** `01-5319044` / `100`
+  * **Email:** `cyberbureau@nepalpolice.gov.np`
+
+---
+
+## 🤝 Contributing
+Contributions to expand signature coverage, improve CV decoding under extreme lighting, or add new PSP schemes are welcome!
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/NewFintechSupport`)
+3. Commit your Changes (`git commit -m 'Add detection rule for XYZ Gateway'`)
+4. Push to the Branch (`git push origin feature/NewFintechSupport`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+## 👤 Author
+Developed and maintained by **Sangharsa Adhikari**.

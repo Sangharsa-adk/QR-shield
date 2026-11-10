@@ -24,66 +24,183 @@ RE_TELECOM_PHONE = re.compile(r"^(?:98|97)\d{8}$")
 # Strict hostname validation pattern avoiding catastrophic nested quantifiers:
 RE_VALID_DOMAIN = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$")
 
-# 1. UI Theme Stylesheet
+# 1. UI Theme Stylesheet - Light Vintage / Archival Print Aesthetic
 UI_CUSTOM_CSS = """
 <style>
-    /* Status Verdict Banners */
+    /* 1. Global Typography & App Canvas */
+    .stApp {
+        background-color: #f7f4ed !important;
+        color: #292524 !important;
+        font-family: Georgia, 'Times New Roman', serif;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        font-family: Georgia, 'Times New Roman', serif !important;
+        color: #1c1917 !important;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+    p, span, label, div {
+        color: #292524;
+    }
+    hr {
+        border-color: #d6cebf !important;
+    }
+    code {
+        background-color: #e2dac9 !important;
+        color: #b45309 !important;
+        border: 1px solid #d6cebf !important;
+        border-radius: 4px;
+        padding: 2px 6px;
+    }
+
+    /* 2. Container Panels, Cards & Expanders */
+    .telemetry-card {
+        background-color: #ede8db;
+        border: 1px solid #d6cebf;
+        border-radius: 6px;
+        padding: 16px;
+        margin-bottom: 16px;
+        color: #292524;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"] > div {
+        background-color: #ede8db !important;
+        border: 1px solid #d6cebf !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="stExpander"] {
+        background-color: #ede8db !important;
+        border: 1px solid #d6cebf !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="stExpander"] summary {
+        color: #1c1917 !important;
+        font-family: Georgia, 'Times New Roman', serif !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stExpander"] summary:hover {
+        color: #b45309 !important;
+    }
+
+    /* 3. Status Verdict Banners (Archival Parchment Tones) */
     .status-banner {
-        border-radius: 8px;
+        border-radius: 6px;
         padding: 16px 20px;
         margin-bottom: 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        color: #1c1917;
     }
     .banner-safe {
-        background: linear-gradient(90deg, rgba(22,101,52,0.35) 0%, rgba(15,23,42,0.95) 100%);
-        border: 1px solid #16a34a;
+        background: linear-gradient(90deg, #e7ede2 0%, #ede8db 100%);
+        border: 1px solid #4d7c0f;
+        color: #365314;
     }
     .banner-warn {
-        background: linear-gradient(90deg, rgba(161,98,7,0.35) 0%, rgba(15,23,42,0.95) 100%);
-        border: 1px solid #eab308;
+        background: linear-gradient(90deg, #fef3c7 0%, #ede8db 100%);
+        border: 1px solid #b45309;
+        color: #78350f;
     }
     .banner-critical {
-        background: linear-gradient(90deg, rgba(153,27,27,0.35) 0%, rgba(15,23,42,0.95) 100%);
-        border: 1px solid #dc2626;
+        background: linear-gradient(90deg, #fee2e2 0%, #ede8db 100%);
+        border: 1px solid #b91c1c;
+        color: #7f1d1d;
     }
 
-    /* Telemetry Panels & Cards */
-    .telemetry-card {
-        background-color: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-    }
+    /* 4. Checklist & Physical Standee Advisory */
     .checklist-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 8px 0;
-        border-bottom: 1px solid #1e293b;
+        border-bottom: 1px solid #d6cebf;
         font-size: 0.88rem;
+        color: #292524;
     }
     .standee-warning {
-        background: rgba(180, 83, 9, 0.15);
-        border-left: 4px solid #f59e0b;
+        background: #fef3c7;
+        border-left: 4px solid #b45309;
         border-radius: 4px;
         padding: 12px 14px;
         margin-bottom: 16px;
         font-size: 0.88rem;
+        color: #78350f;
     }
-    .threat-tag-critical {
-        background: #450a0a; color: #f87171; border: 1px solid #b91c1c;
-        padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 0.76rem;
+
+    /* 5. Ecosystem & Security Badges (Muted Archival Kraft Tags) */
+    .threat-tag-info {
+        background: #e2dac9;
+        color: #44403c;
+        border: 1px solid #c7bcab;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.76rem;
     }
     .threat-tag-warn {
-        background: #422006; color: #fbbf24; border: 1px solid #d97706;
-        padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 0.76rem;
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #d97706;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.76rem;
     }
-    .threat-tag-info {
-        background: #172554; color: #60a5fa; border: 1px solid #1d4ed8;
-        padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 0.76rem;
+    .threat-tag-critical {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #b91c1c;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.76rem;
+    }
+
+    /* 6. Form Inputs & Text Fields */
+    input, textarea, [data-baseweb="input"], [data-baseweb="input"] > div {
+        background-color: #faf8f5 !important;
+        border-color: #c7bcab !important;
+        color: #292524 !important;
+        border-radius: 6px !important;
+    }
+    [data-baseweb="input"]:focus-within {
+        border-color: #b45309 !important;
+        box-shadow: 0 0 0 1px #b45309 !important;
+    }
+
+    /* 7. Primary Buttons (Antique Terracotta) */
+    button[kind="primary"], .stButton > button, [data-testid="stDownloadButton"] > button {
+        background-color: #c25e34 !important;
+        color: #fdfbf7 !important;
+        border: 1px solid #a84c26 !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        font-family: Georgia, 'Times New Roman', serif !important;
+        transition: background-color 0.2s ease, transform 0.1s ease !important;
+    }
+    button[kind="primary"]:hover, .stButton > button:hover, [data-testid="stDownloadButton"] > button:hover {
+        background-color: #a84c26 !important;
+        border-color: #8c3b1b !important;
+        color: #ffffff !important;
+    }
+    button[kind="primary"]:active, .stButton > button:active, [data-testid="stDownloadButton"] > button:active {
+        transform: scale(0.98) !important;
+    }
+
+    /* 8. Tabs Navigation */
+    [data-baseweb="tab-list"] {
+        background-color: transparent !important;
+        border-bottom: 1px solid #d6cebf !important;
+    }
+    [data-baseweb="tab"] {
+        color: #57534e !important;
+        font-family: Georgia, 'Times New Roman', serif !important;
+        font-size: 0.88rem !important;
+    }
+    [data-baseweb="tab"][aria-selected="true"] {
+        color: #b45309 !important;
+        border-bottom-color: #b45309 !important;
+        font-weight: 600 !important;
     }
 </style>
 """
@@ -647,8 +764,8 @@ def main():
             # Inspected Canonical Target (HTML Encoded)
             safe_target = html.escape(result.canonical_target)
             st.markdown(f"""
-            <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 14px;">
-                🎯 <b>Inspected Target:</b> <code style="word-break: break-all; color: #38bdf8;">{safe_target}</code>
+            <div style="font-size: 0.85rem; color: #57534e; margin-bottom: 14px;">
+                🎯 <b>Inspected Target:</b> <code style="word-break: break-all; color: #b45309;">{safe_target}</code>
             </div>
             """, unsafe_allow_html=True)
 
@@ -725,35 +842,35 @@ def main():
                 st.code(raw_payload_to_test, language="text")
 
         else:
-            # High-Density Idle State Panel
+            # High-Density Idle State Panel (Archival Print Theme)
             idle_panel_html = """<div class="telemetry-card">
 <h4>⚡ Engine Ready &amp; Threat Intelligence Active</h4>
-<p style="opacity: 0.8; font-size: 0.88rem;">
+<p style="opacity: 0.85; font-size: 0.88rem; color: #44403c;">
 Awaiting input from the left panel. SajagQR continuously audits payloads against licensed Nepal Rastra Bank directives and active quishing signatures.
 </p>
-<hr style="border-color: #334155; margin: 12px 0;">
+<hr style="border-color: #d6cebf; margin: 12px 0;">
 <h6 style="margin-bottom: 8px;">Active Detection Capabilities</h6>
-<ul style="font-size: 0.84rem; opacity: 0.85; line-height: 1.7; padding-left: 20px;">
+<ul style="font-size: 0.84rem; opacity: 0.9; line-height: 1.7; padding-left: 20px; color: #292524;">
 <li>🛡️ <b>EMVCo Interoperability:</b> Decodes merchant name, city, and POS metadata.</li>
 <li>🎯 <b>Typosquatting &amp; Homoglyphs:</b> Detects spoofed bank and wallet domains.</li>
 <li>🔎 <b>Physical Standee Swap Defense:</b> Differentiates personal P2P wallets from verified merchant stands.</li>
 <li>🛑 <b>SSRF &amp; Obfuscation Shield:</b> Flags link shorteners and inspects app routing attribution.</li>
 </ul>
-<hr style="border-color: #334155; margin: 12px 0;">
+<hr style="border-color: #d6cebf; margin: 12px 0;">
 <h6 style="margin-bottom: 10px;">Monitored Ecosystems &amp; Gateway Coverage</h6>
 <div style="display: flex; flex-direction: column; gap: 8px;">
 <div>
-<span style="font-size: 0.76rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Standards:</span><br>
+<span style="font-size: 0.76rem; color: #78716c; font-weight: 600; text-transform: uppercase;">Standards:</span><br>
 <span class="threat-tag-info">NepalQR Interoperable Spec</span>
 <span class="threat-tag-info">EMVCo Merchant Standards</span>
 </div>
 <div>
-<span style="font-size: 0.76rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Banking &amp; Settlement:</span><br>
+<span style="font-size: 0.76rem; color: #78716c; font-weight: 600; text-transform: uppercase;">Banking &amp; Settlement:</span><br>
 <span class="threat-tag-info">20 NRB Licensed Commercial Banks</span>
 <span class="threat-tag-info">connectIPS (NCHL)</span>
 </div>
 <div>
-<span style="font-size: 0.76rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Digital Wallets &amp; PSPs:</span><br>
+<span style="font-size: 0.76rem; color: #78716c; font-weight: 600; text-transform: uppercase;">Digital Wallets &amp; PSPs:</span><br>
 <span class="threat-tag-info">eSewa</span>
 <span class="threat-tag-info">Khalti</span>
 <span class="threat-tag-info">Fonepay</span>
@@ -763,7 +880,7 @@ Awaiting input from the left panel. SajagQR continuously audits payloads against
 <span class="threat-tag-info">Namaste Pay</span>
 </div>
 <div>
-<span style="font-size: 0.76rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">App Attribution &amp; Routing:</span><br>
+<span style="font-size: 0.76rem; color: #78716c; font-weight: 600; text-transform: uppercase;">App Attribution &amp; Routing:</span><br>
 <span class="threat-tag-info">AppsFlyer (OneLink)</span>
 <span class="threat-tag-info">Branch.io</span>
 <span class="threat-tag-info">Google Firebase</span>
@@ -772,6 +889,122 @@ Awaiting input from the left panel. SajagQR continuously audits payloads against
 </div>
 </div>"""
             st.markdown(idle_panel_html, unsafe_allow_html=True)
+
+    # --- COMMUNITY FEEDBACK & ISSUE REPORTING ---
+    st.divider()
+    with st.expander("💬 Share Feedback / Report an Issue", expanded=False):
+        st.markdown(
+            "Have suggestions or spotted a new QR scam pattern? "
+            "**Your feedback helps improve SajagQR for everyone.**"
+        )
+        feedback_html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                    font-family: Georgia, 'Times New Roman', serif;
+                }
+                body {
+                    background-color: transparent;
+                    color: #292524;
+                    padding: 4px 0;
+                }
+                .form-row {
+                    display: flex;
+                    gap: 14px;
+                    margin-bottom: 12px;
+                }
+                .form-group {
+                    flex: 1;
+                }
+                label {
+                    display: block;
+                    font-size: 0.82rem;
+                    color: #57534e;
+                    margin-bottom: 6px;
+                    font-weight: 600;
+                }
+                input, textarea {
+                    width: 100%;
+                    padding: 9px 12px;
+                    border-radius: 6px;
+                    background-color: #faf8f5;
+                    border: 1px solid #c7bcab;
+                    color: #292524;
+                    font-size: 0.88rem;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    outline: none;
+                    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+                }
+                input::placeholder, textarea::placeholder {
+                    color: #a8a29e;
+                }
+                input:focus, textarea:focus {
+                    border-color: #b45309;
+                    box-shadow: 0 0 0 1px #b45309;
+                }
+                textarea {
+                    resize: vertical;
+                    min-height: 80px;
+                }
+                .submit-btn {
+                    background-color: #c25e34;
+                    color: #fdfbf7;
+                    border: 1px solid #a84c26;
+                    border-radius: 6px;
+                    padding: 10px 22px;
+                    font-weight: 600;
+                    font-size: 0.88rem;
+                    font-family: Georgia, 'Times New Roman', serif;
+                    cursor: pointer;
+                    transition: background-color 0.2s ease, transform 0.1s ease;
+                }
+                .submit-btn:hover {
+                    background-color: #a84c26;
+                    border-color: #8c3b1b;
+                    color: #ffffff;
+                }
+                .submit-btn:active {
+                    transform: scale(0.98);
+                }
+            </style>
+        </head>
+        <body>
+            <form action="https://formsubmit.co/hello@sangharsaadhikari.com.np" method="POST">
+                <!-- FormSubmit Anti-Spam & Configuration -->
+                <input type="text" name="_honey" style="display:none">
+                <input type="hidden" name="_captcha" value="false">
+                <input type="hidden" name="_subject" value="[SajagQR Feedback] New Community Submission">
+                <input type="hidden" name="_template" value="table">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name / Handle (Optional)</label>
+                        <input type="text" name="name" placeholder="e.g. security_researcher">
+                    </div>
+                    <div class="form-group">
+                        <label>Email (Optional)</label>
+                        <input type="email" name="email" placeholder="you@example.com">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label>Message / Feedback <span style="color: #c25e34;">*</span></label>
+                    <textarea name="message" rows="4" required placeholder="Describe the suspected QR pattern, heuristic suggestion, or false positive..."></textarea>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    ✉️ Send Feedback
+                </button>
+            </form>
+        </body>
+        </html>
+        """
+        st.iframe(feedback_html, height=310)
 
 if __name__ == "__main__":
     main()
